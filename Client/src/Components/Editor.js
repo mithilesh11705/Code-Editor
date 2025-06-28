@@ -23,7 +23,6 @@ const Editor = ({ clients, socketRef, roomId, onCodeChange }) => {
   const [language, setLanguage] = useState("javascript");
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState("// Output will appear here...");
-  const [connectionStatus, setConnectionStatus] = useState("connected");
 
   const modeOptions = {
     javascript: { name: "javascript", json: true },
@@ -137,7 +136,7 @@ int main() {
         editorRef.current = null;
       }
     };
-  }, [language]);
+  }, [language, defaultCode, modeOptions, onCodeChange, roomId, socketRef]);
 
   useEffect(() => {
     if (socketRef.current) {
@@ -147,15 +146,16 @@ int main() {
         }
       };
 
-      socketRef.current.on(ACTIONS.CODE_CHANGE, handleCodeChange);
+      const currentSocket = socketRef.current;
+      currentSocket.on(ACTIONS.CODE_CHANGE, handleCodeChange);
 
       return () => {
-        if (socketRef.current) {
-          socketRef.current.off(ACTIONS.CODE_CHANGE, handleCodeChange);
+        if (currentSocket) {
+          currentSocket.off(ACTIONS.CODE_CHANGE, handleCodeChange);
         }
       };
     }
-  }, []); // Empty dependency array to run only once
+  }, [socketRef]);
 
   useEffect(() => {
     if (socketRef.current) {
@@ -177,17 +177,18 @@ int main() {
         setIsRunning(false);
       };
 
-      socketRef.current.on("cpp_output", handleCppOutput);
-      socketRef.current.on("python_output", handlePythonOutput);
+      const currentSocket = socketRef.current;
+      currentSocket.on("cpp_output", handleCppOutput);
+      currentSocket.on("python_output", handlePythonOutput);
 
       return () => {
-        if (socketRef.current) {
-          socketRef.current.off("cpp_output", handleCppOutput);
-          socketRef.current.off("python_output", handlePythonOutput);
+        if (currentSocket) {
+          currentSocket.off("cpp_output", handleCppOutput);
+          currentSocket.off("python_output", handlePythonOutput);
         }
       };
     }
-  }, []); // Empty dependency array to run only once
+  }, [socketRef]);
 
   function leaveRoom() {
     reactNavigator("/");
@@ -207,6 +208,7 @@ int main() {
             originalLog.apply(console, value);
             outputText += value.join(" ") + "\n";
           };
+          // eslint-disable-next-line no-eval
           const result = eval(code);
           if (result !== undefined) {
             outputText += result + "\n";
@@ -283,7 +285,7 @@ int main() {
 
           <div className="flex items-center space-x-3">
             {/* Status Indicators */}
-            <StatusIndicator status={connectionStatus} type="connection" />
+            <StatusIndicator status="connected" type="connection" />
             <StatusIndicator
               status={isRunning ? "running" : "idle"}
               type="execution"
