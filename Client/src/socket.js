@@ -7,5 +7,8 @@ export const initSocket = async () => {
     timeout: 10000,
     transports: ["websocket", "polling"],
   };
-  return io("http://localhost:5000", options);
+
+  // Use environment variable for production, fallback to localhost for development
+  const serverUrl = process.env.REACT_APP_SERVER_URL || "http://localhost:5000";
+  return io(serverUrl, options);
 };

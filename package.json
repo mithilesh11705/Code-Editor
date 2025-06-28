@@ -1,0 +1,29 @@
+{
+  "name": "codecollab",
+  "version": "1.0.0",
+  "description": "Real-time collaborative code editor",
+  "main": "Server/main.js",
+  "scripts": {
+    "dev": "concurrently \"cd Server && npm run dev\" \"cd Client && npm start\"",
+    "build": "cd Client && npm install && npm run build",
+    "start": "node Server/main.js",
+    "install-all": "npm install && cd Client && npm install && cd ../Server && npm install",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "real-time",
+    "collaborative",
+    "code-editor",
+    "socket.io",
+    "react"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+} 

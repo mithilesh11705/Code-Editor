@@ -7,11 +7,27 @@ const { exec } = require("child_process");
 const fs = require("fs");
 const ACTIONS = require("../Client/src/Actions.js");
 const app = express();
-app.use(cors());
+
+// Enhanced CORS configuration for production
+app.use(
+  cors({
+    origin:
+      process.env.NODE_ENV === "production"
+        ? ["https://your-app-name.vercel.app", "https://your-custom-domain.com"]
+        : ["http://localhost:3000", "http://localhost:5000"],
+    methods: ["GET", "POST"],
+    credentials: true,
+    transports: ["websocket", "polling"],
+  })
+);
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://localhost:5000"],
+    origin:
+      process.env.NODE_ENV === "production"
+        ? ["https://your-app-name.vercel.app", "https://your-custom-domain.com"]
+        : ["http://localhost:3000", "http://localhost:5000"],
     methods: ["GET", "POST"],
     credentials: true,
     transports: ["websocket", "polling"],
@@ -24,11 +40,16 @@ if (!fs.existsSync(tempDir)) {
   fs.mkdirSync(tempDir);
 }
 
-app.use(express.static(path.join(__dirname, "../Client/my-app/build")));
-app.use((req, res, next) => {
-  res.sendFile(path.join(__dirname, "../Client/my-app/build", "index.html"));
-});
+// Serve static files in production
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../Client/build")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../Client/build", "index.html"));
+  });
+}
+
 const userSocketMap = {};
+
 function getAllConnectedClients(roomId) {
   // Get unique socket IDs from the room
   const socketIds = Array.from(io.sockets.adapter.rooms.get(roomId) || []);
@@ -146,5 +167,9 @@ io.on("connection", (socket) => {
     socket.leave();
   });
 });
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Listening on port ${PORT}`));
+
+// Export for Vercel
+module.exports = app;
