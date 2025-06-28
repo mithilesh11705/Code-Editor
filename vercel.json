@@ -5,7 +5,9 @@
       "src": "Client/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "build"
+        "distDir": "build",
+        "installCommand": "cd Client && npm install",
+        "buildCommand": "cd Client && npm run build"
       }
     },
     {
