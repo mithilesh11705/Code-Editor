@@ -5,7 +5,7 @@ const path = require("path");
 const { Server } = require("socket.io");
 const { exec } = require("child_process");
 const fs = require("fs");
-const ACTIONS = require("../Client/my-app/src/Actions.js");
+const ACTIONS = require("../Client/src/Actions.js");
 const app = express();
 app.use(cors());
 const server = http.createServer(app);
