@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import Codemirror from "codemirror";
 import "codemirror/lib/codemirror.css";
 import "codemirror/theme/dracula.css";
@@ -24,30 +24,37 @@ const Editor = ({ clients, socketRef, roomId, onCodeChange }) => {
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState("// Output will appear here...");
 
-  const modeOptions = {
-    javascript: { name: "javascript", json: true },
-    python: { name: "python" },
-    html: { name: "xml" },
-    css: { name: "css" },
-    cpp: { name: "text/x-c++src" },
-  };
+  const modeOptions = useMemo(
+    () => ({
+      javascript: { name: "javascript", json: true },
+      python: { name: "python" },
+      html: { name: "xml" },
+      css: { name: "css" },
+      cpp: { name: "text/x-c++src" },
+    }),
+    []
+  );
 
-  const languageIcons = {
-    javascript: "⚡",
-    python: "🐍",
-    html: "🌐",
-    css: "🎨",
-    cpp: "⚙️",
-  };
+  const languageIcons = useMemo(
+    () => ({
+      javascript: "⚡",
+      python: "🐍",
+      html: "🌐",
+      css: "🎨",
+      cpp: "⚙️",
+    }),
+    []
+  );
 
-  const defaultCode = {
-    javascript: `// Example code to generate random number in Javascript
+  const defaultCode = useMemo(
+    () => ({
+      javascript: `// Example code to generate random number in Javascript
 function randomNumber(min, max) {
   return Math.floor(Math.random() * (max-min) + min);
 }
 // Function call
 console.log("Random Number between 1 and 100 : " + randomNumber(1, 100));`,
-    python: `# Example code to generate random number in Python
+      python: `# Example code to generate random number in Python
 import random
 
 def random_number(min_val, max_val):
@@ -55,7 +62,7 @@ def random_number(min_val, max_val):
 
 # Function call
 print(f"Random Number between 1 and 100: {random_number(1, 100)}")`,
-    html: `<!DOCTYPE html>
+      html: `<!DOCTYPE html>
 <html>
 <head>
     <title>Example</title>
@@ -64,7 +71,7 @@ print(f"Random Number between 1 and 100: {random_number(1, 100)}")`,
     <h1>Hello World!</h1>
 </body>
 </html>`,
-    css: `/* Example CSS */
+      css: `/* Example CSS */
 body {
     background-color: #f0f0f0;
     font-family: Arial, sans-serif;
@@ -73,7 +80,7 @@ body {
 h1 {
     color: #333;
 }`,
-    cpp: `// Example C++ code
+      cpp: `// Example C++ code
 #include <iostream>
 using namespace std;
 
@@ -81,7 +88,9 @@ int main() {
     cout << "Hello, World!" << endl;
     return 0;
 }`,
-  };
+    }),
+    []
+  );
 
   useEffect(() => {
     let editor = null;
