@@ -11,6 +11,8 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
     "codemirror": "^5.65.2",
+    "framer-motion": "^12.19.2",
+    "lucide-react": "^0.525.0",
     "react": "^18.2.0",
     "react-avatar": "^5.0.3",
     "react-dom": "^18.2.0",

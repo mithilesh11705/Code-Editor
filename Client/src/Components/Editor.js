@@ -13,11 +13,17 @@ import "codemirror/addon/edit/closebrackets";
 import ACTIONS from "../Actions";
 import Avatar from "react-avatar";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import LoadingSpinner from "./LoadingSpinner";
+import StatusIndicator from "./StatusIndicator";
 
 const Editor = ({ clients, socketRef, roomId, onCodeChange }) => {
   const reactNavigator = useNavigate();
   const editorRef = useRef(null);
   const [language, setLanguage] = useState("javascript");
+  const [isRunning, setIsRunning] = useState(false);
+  const [output, setOutput] = useState("// Output will appear here...");
+  const [connectionStatus, setConnectionStatus] = useState("connected");
 
   const modeOptions = {
     javascript: { name: "javascript", json: true },
@@ -25,6 +31,14 @@ const Editor = ({ clients, socketRef, roomId, onCodeChange }) => {
     html: { name: "xml" },
     css: { name: "css" },
     cpp: { name: "text/x-c++src" },
+  };
+
+  const languageIcons = {
+    javascript: "⚡",
+    python: "🐍",
+    html: "🌐",
+    css: "🎨",
+    cpp: "⚙️",
   };
 
   const defaultCode = {
@@ -86,6 +100,17 @@ int main() {
           autoCloseTags: true,
           autoCloseBrackets: true,
           lineNumbers: true,
+          lineWrapping: true,
+          indentUnit: 2,
+          tabSize: 2,
+          indentWithTabs: false,
+          extraKeys: {
+            "Ctrl-Space": "autocomplete",
+            "Ctrl-/": "toggleComment",
+            "Ctrl-F": "findPersistent",
+            "Ctrl-H": "replace",
+            "Ctrl-G": "jumpToLine",
+          },
         }
       );
       editorRef.current = editor;
@@ -116,18 +141,53 @@ int main() {
 
   useEffect(() => {
     if (socketRef.current) {
-      socketRef.current.on(ACTIONS.CODE_CHANGE, ({ code }) => {
-        if (code !== null) {
+      const handleCodeChange = ({ code }) => {
+        if (code !== null && editorRef.current) {
           editorRef.current.setValue(code);
         }
-      });
+      };
+
+      socketRef.current.on(ACTIONS.CODE_CHANGE, handleCodeChange);
+
+      return () => {
+        if (socketRef.current) {
+          socketRef.current.off(ACTIONS.CODE_CHANGE, handleCodeChange);
+        }
+      };
     }
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.off(ACTIONS.CODE_CHANGE);
-      }
-    };
-  }, [socketRef.current]);
+  }, []); // Empty dependency array to run only once
+
+  useEffect(() => {
+    if (socketRef.current) {
+      const handleCppOutput = ({ output, error }) => {
+        if (error) {
+          setOutput(`Compilation Error:\n${error}`);
+        } else {
+          setOutput(`Output:\n${output}`);
+        }
+        setIsRunning(false);
+      };
+
+      const handlePythonOutput = ({ output, error }) => {
+        if (error) {
+          setOutput(`Error:\n${error}`);
+        } else {
+          setOutput(`Output:\n${output}`);
+        }
+        setIsRunning(false);
+      };
+
+      socketRef.current.on("cpp_output", handleCppOutput);
+      socketRef.current.on("python_output", handlePythonOutput);
+
+      return () => {
+        if (socketRef.current) {
+          socketRef.current.off("cpp_output", handleCppOutput);
+          socketRef.current.off("python_output", handlePythonOutput);
+        }
+      };
+    }
+  }, []); // Empty dependency array to run only once
 
   function leaveRoom() {
     reactNavigator("/");
@@ -135,23 +195,30 @@ int main() {
 
   const handleRunCode = () => {
     const code = editorRef.current.getValue();
+    setIsRunning(true);
+    setOutput("Running code...");
+
     switch (language) {
       case "javascript":
         try {
           const originalLog = console.log;
+          let outputText = "";
           console.log = function (...value) {
             originalLog.apply(console, value);
-            return value;
+            outputText += value.join(" ") + "\n";
           };
           const result = eval(code);
-          document.getElementById("result").innerText = result;
+          if (result !== undefined) {
+            outputText += result + "\n";
+          }
+          setOutput(outputText || "Code executed successfully!");
         } catch (e) {
-          console.error(e);
-          document.getElementById("result").innerText = `Error: ${e.message}`;
+          setOutput(`Error: ${e.message}`);
         }
+        setIsRunning(false);
         break;
       case "python":
-        document.getElementById("result").innerText = "Running Python code...";
+        setOutput("Running Python code...");
         socketRef.current.emit("execute_python", { code });
         break;
       case "html":
@@ -165,139 +232,233 @@ int main() {
         iframe.contentDocument.open();
         iframe.contentDocument.write(code);
         iframe.contentDocument.close();
+        setOutput("HTML rendered successfully!");
+        setIsRunning(false);
         break;
       case "css":
-        document.getElementById("result").innerText =
-          "CSS preview is not supported in this version.";
+        setOutput("CSS preview is not supported in this version.");
+        setIsRunning(false);
         break;
       case "cpp":
-        document.getElementById("result").innerText =
-          "Compiling and running C++ code...";
+        setOutput("Compiling and running C++ code...");
         socketRef.current.emit("execute_cpp", { code });
         break;
       default:
+        setIsRunning(false);
         break;
     }
   };
 
-  useEffect(() => {
-    if (socketRef.current) {
-      socketRef.current.on("cpp_output", ({ output, error }) => {
-        const resultDiv = document.getElementById("result");
-        if (error) {
-          resultDiv.innerText = `Compilation Error:\n${error}`;
-        } else {
-          resultDiv.innerText = `Output:\n${output}`;
-        }
-      });
-
-      socketRef.current.on("python_output", ({ output, error }) => {
-        const resultDiv = document.getElementById("result");
-        if (error) {
-          resultDiv.innerText = `Error:\n${error}`;
-        } else {
-          resultDiv.innerText = `Output:\n${output}`;
-        }
-      });
+  const clearOutput = () => {
+    setOutput("// Output cleared");
+    const resultDiv = document.getElementById("result");
+    if (resultDiv) {
+      resultDiv.innerHTML = "";
     }
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.off("cpp_output");
-        socketRef.current.off("python_output");
-      }
-    };
-  }, [socketRef.current]);
+  };
 
   return (
-    <div className="flex flex-col h-screen">
-      <div className="flex-1 grid grid-cols-2">
-        <div
-          id="bg"
-          className="d border-r border-muted p-6 flex flex-col gap-4"
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">
-              <a href="https://editor-4hda.vercel.app/">Code Editor</a>
-            </h2>
-            <div className="flex items-center gap-2">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Header */}
+      <div className="glass-effect border-b border-gray-700 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <motion.div
+                className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center"
+                whileHover={{ rotate: 360 }}
+                transition={{ duration: 0.6 }}
+              >
+                <span className="text-white text-sm font-bold">CC</span>
+              </motion.div>
+              <h1 className="text-xl font-bold text-white">CodeCollab</h1>
+            </div>
+            <div className="flex items-center space-x-2 text-sm text-gray-300">
+              <span>Room:</span>
+              <span className="bg-gray-700 px-2 py-1 rounded text-white font-mono">
+                {roomId}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            {/* Status Indicators */}
+            <StatusIndicator status={connectionStatus} type="connection" />
+            <StatusIndicator
+              status={isRunning ? "running" : "idle"}
+              type="execution"
+            />
+
+            {/* Language Selector */}
+            <div className="flex items-center space-x-2">
+              <span className="text-gray-300 text-sm">Language:</span>
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="bg-gray-800 text-white px-3 py-2 rounded-md"
+                className="bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-600 focus:border-indigo-500 focus:outline-none text-sm"
               >
-                <option value="javascript">JavaScript</option>
-                <option value="python">Python</option>
-                <option value="html">HTML</option>
-                <option value="css">CSS</option>
-                <option value="cpp">C++</option>
+                <option value="javascript">JavaScript ⚡</option>
+                <option value="python">Python 🐍</option>
+                <option value="html">HTML 🌐</option>
+                <option value="css">CSS 🎨</option>
+                <option value="cpp">C++ ⚙️</option>
               </select>
-              <button
-                id="btn"
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-2">
+              <motion.button
                 onClick={handleRunCode}
-                className="text-white inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10"
+                disabled={isRunning}
+                className="btn-primary flex items-center space-x-2 px-4 py-2 text-sm disabled:opacity-50"
+                title="Run Code"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {isRunning ? (
+                  <LoadingSpinner size="sm" text="" />
+                ) : (
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <polygon points="6 3 20 12 6 21 6 3"></polygon>
+                  </svg>
+                )}
+                <span>Run</span>
+              </motion.button>
+
+              <motion.button
+                onClick={clearOutput}
+                className="btn-secondary px-3 py-2 text-sm"
+                title="Clear Output"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
+                  viewBox="0 0 24 24"
                 >
-                  <polygon points="6 3 20 12 6 21 6 3"></polygon>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
                 </svg>
-                <span className="sr-only">Run code</span>
-              </button>
-              <button
-                id="btn"
+              </motion.button>
+
+              <motion.button
                 onClick={leaveRoom}
-                className="text-white inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 w-10"
+                className="btn-secondary px-3 py-2 text-sm"
+                title="Leave Room"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
+                  viewBox="0 0 24 24"
                 >
-                  <path d="M3 6h18"></path>
-                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                  <line x1="10" x2="10" y1="11" y2="17"></line>
-                  <line x1="14" x2="14" y1="11" y2="17"></line>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
                 </svg>
-                <span className="sr-only">Clear editor</span>
-              </button>
+              </motion.button>
             </div>
           </div>
-          <textarea
-            id="realtimeEditorr"
-            className="flex min-h-[80px] w-full bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 flex-1 resize-none border border-muted rounded-md p-4 focus:outline-none focus:ring-1 focus:ring-primary"
-          ></textarea>
         </div>
-        <div id="bg" className="bg-background p-6 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-white text-xl font-semibold">Output Preview</h2>
-          </div>
-          <div id="bgg" className="bg-muted rounded-md flex-1 overflow-auto">
-            <div id="result"></div>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+
+        {/* Connected Users */}
+        <div className="flex items-center space-x-4 mt-3">
+          <span className="text-gray-400 text-sm">Connected:</span>
+          <div className="flex items-center space-x-2">
             {clients.map((client) => (
-              <div key={client.socketId} className="flex items-center gap-2">
-                <Avatar name={client.username} size={25} round="5px" />
-                <span className="text-white">{client.username}</span>
-              </div>
+              <motion.div
+                key={client.socketId}
+                className="flex items-center space-x-2 bg-gray-800 px-3 py-1 rounded-full"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Avatar name={client.username} size={20} round="50%" />
+                <span className="text-white text-sm">{client.username}</span>
+              </motion.div>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 grid grid-cols-2 gap-0">
+        {/* Editor Panel */}
+        <div className="flex flex-col bg-gray-900">
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+            <div className="flex items-center space-x-2">
+              <span className="text-lg">{languageIcons[language]}</span>
+              <span className="text-white font-medium">
+                {language.toUpperCase()}
+              </span>
+            </div>
+            <div className="flex items-center space-x-2 text-xs text-gray-400">
+              <span>Real-time collaboration</span>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            </div>
+          </div>
+          <div className="flex-1 p-4">
+            <textarea
+              id="realtimeEditorr"
+              className="w-full h-full bg-transparent border-0 outline-none resize-none"
+            ></textarea>
+          </div>
+        </div>
+
+        {/* Output Panel */}
+        <div className="flex flex-col bg-gray-900">
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+            <div className="flex items-center space-x-2">
+              <svg
+                className="w-5 h-5 text-green-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span className="text-white font-medium">Output</span>
+            </div>
+            <div className="flex items-center space-x-2 text-xs text-gray-400">
+              <span>Live execution</span>
+              {isRunning && (
+                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 p-4">
+            <div
+              id="bgg"
+              className="w-full h-full bg-gray-800 rounded-lg overflow-auto"
+            >
+              <pre
+                id="result"
+                className="text-green-400 font-mono text-sm p-4 whitespace-pre-wrap"
+              >
+                {output}
+              </pre>
+            </div>
           </div>
         </div>
       </div>
