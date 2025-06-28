@@ -95,14 +95,21 @@ int main() {
   useEffect(() => {
     let editor = null;
     async function init() {
+      // Wait for the DOM element to be available
+      const textareaElement = document.getElementById("realtimeEditorr");
+      if (!textareaElement) {
+        console.log("Textarea element not found, retrying...");
+        setTimeout(init, 100);
+        return;
+      }
+
       // Clean up previous instance if it exists
       if (editorRef.current) {
         editorRef.current.toTextArea();
       }
 
-      editor = Codemirror.fromTextArea(
-        document.getElementById("realtimeEditorr"),
-        {
+      try {
+        editor = Codemirror.fromTextArea(textareaElement, {
           mode: modeOptions[language],
           theme: "3024-night",
           autoCloseTags: true,
@@ -119,34 +126,46 @@ int main() {
             "Ctrl-H": "replace",
             "Ctrl-G": "jumpToLine",
           },
-        }
-      );
-      editorRef.current = editor;
-      editor.setValue(defaultCode[language]);
-      editor.getWrapperElement().classList.add("CodeMirror-linenumbers");
-      editor.on("change", (instance, changes) => {
-        const { origin } = changes;
-        const code = instance.getValue();
-        onCodeChange(code);
-        if (origin !== "setValue") {
-          socketRef.current.emit(ACTIONS.CODE_CHANGE, {
-            roomId,
-            code,
-          });
-        }
-      });
+        });
+
+        editorRef.current = editor;
+        editor.setValue(defaultCode[language]);
+        editor.getWrapperElement().classList.add("CodeMirror-linenumbers");
+
+        editor.on("change", (instance, changes) => {
+          const { origin } = changes;
+          const code = instance.getValue();
+          onCodeChange(code);
+          if (origin !== "setValue") {
+            socketRef.current.emit(ACTIONS.CODE_CHANGE, {
+              roomId,
+              code,
+            });
+          }
+        });
+
+        console.log("CodeMirror editor initialized successfully");
+      } catch (error) {
+        console.error("Error initializing CodeMirror:", error);
+      }
     }
+
     init();
 
     // Cleanup function
     return () => {
       if (editorRef.current) {
-        editorRef.current.toTextArea();
+        try {
+          editorRef.current.toTextArea();
+        } catch (error) {
+          console.error("Error cleaning up editor:", error);
+        }
         editorRef.current = null;
       }
     };
-  }, [language, defaultCode, modeOptions, onCodeChange, roomId, socketRef]);
+  }, [language, defaultCode, modeOptions, onCodeChange, roomId]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (socketRef.current) {
       const handleCodeChange = ({ code }) => {
@@ -164,8 +183,9 @@ int main() {
         }
       };
     }
-  }, [socketRef]);
+  }, []); // Empty dependency array to run only once
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (socketRef.current) {
       const handleCppOutput = ({ output, error }) => {
@@ -197,7 +217,7 @@ int main() {
         }
       };
     }
-  }, [socketRef]);
+  }, []); // Empty dependency array to run only once
 
   function leaveRoom() {
     reactNavigator("/");
