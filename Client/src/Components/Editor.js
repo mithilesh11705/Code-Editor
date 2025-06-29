@@ -23,6 +23,7 @@ const Editor = ({ clients, socketRef, roomId, onCodeChange }) => {
   const [language, setLanguage] = useState("javascript");
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState("// Output will appear here...");
+  const handleCodeUpdateRef = useRef(null);
 
   const modeOptions = useMemo(
     () => ({
@@ -132,11 +133,25 @@ int main() {
         editor.setValue(defaultCode[language]);
         editor.getWrapperElement().classList.add("CodeMirror-linenumbers");
 
+        // Listen for external code updates
+        const handleCodeUpdate = (event) => {
+          const { code } = event.detail;
+          if (editor && code !== editor.getValue()) {
+            editor.setValue(code);
+          }
+        };
+
+        // Store the function reference for cleanup
+        handleCodeUpdateRef.current = handleCodeUpdate;
+        document.addEventListener("codeUpdate", handleCodeUpdate);
+
         editor.on("change", (instance, changes) => {
           const { origin } = changes;
           const code = instance.getValue();
           onCodeChange(code);
-          if (origin !== "setValue") {
+
+          // Only emit if the change is from user input, not from setValue
+          if (origin !== "setValue" && socketRef.current) {
             socketRef.current.emit(ACTIONS.CODE_CHANGE, {
               roomId,
               code,
@@ -162,28 +177,13 @@ int main() {
         }
         editorRef.current = null;
       }
+      // Remove event listener using the stored reference
+      if (handleCodeUpdateRef.current) {
+        document.removeEventListener("codeUpdate", handleCodeUpdateRef.current);
+        handleCodeUpdateRef.current = null;
+      }
     };
-  }, [language, defaultCode, modeOptions, onCodeChange, roomId]);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (socketRef.current) {
-      const handleCodeChange = ({ code }) => {
-        if (code !== null && editorRef.current) {
-          editorRef.current.setValue(code);
-        }
-      };
-
-      const currentSocket = socketRef.current;
-      currentSocket.on(ACTIONS.CODE_CHANGE, handleCodeChange);
-
-      return () => {
-        if (currentSocket) {
-          currentSocket.off(ACTIONS.CODE_CHANGE, handleCodeChange);
-        }
-      };
-    }
-  }, []); // Empty dependency array to run only once
+  }, [language, defaultCode, modeOptions, onCodeChange, roomId, socketRef]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
