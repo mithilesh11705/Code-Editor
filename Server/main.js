@@ -6,6 +6,10 @@ const { Server } = require("socket.io");
 const { exec } = require("child_process");
 const fs = require("fs");
 const ACTIONS = require("../Client/src/Actions.js");
+
+// Define PORT at the top
+const PORT = process.env.PORT || 5000;
+
 const app = express();
 
 // Enhanced CORS configuration for production
@@ -27,11 +31,17 @@ const io = new Server(server, {
     origin:
       process.env.NODE_ENV === "production"
         ? ["https://your-app-name.vercel.app", "https://your-custom-domain.com"]
-        : ["http://localhost:3000", "http://localhost:5000"],
+        : "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true,
-    transports: ["websocket", "polling"],
   },
+  transports: ["websocket"],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  upgrade: false,
+  forceNew: true,
+  path: "/socket.io",
 });
 
 // Create temp directory if it doesn't exist
@@ -105,6 +115,14 @@ function executeCppCode(code, socket) {
   );
 }
 
+// Start the server
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
+// Export for Vercel
+module.exports = app;
+
 function executePythonCode(code, socket) {
   const fileName = `temp_${Date.now()}.py`;
   const filePath = path.join(tempDir, fileName);
@@ -146,8 +164,13 @@ io.on("connection", (socket) => {
   socket.on(ACTIONS.CODE_CHANGE, ({ roomId, code }) => {
     socket.in(roomId).emit(ACTIONS.CODE_CHANGE, { code });
   });
-  socket.on(ACTIONS.SYNC_CODE, ({ socketId, code }) => {
-    io.to(socketId).emit(ACTIONS.CODE_CHANGE, { code });
+  socket.on(ACTIONS.SYNC_CODE, ({ roomId, socketId }) => {
+    // Get the code from the specified user and send it to the requesting user
+    const targetSocket = io.sockets.sockets.get(socketId);
+    if (targetSocket) {
+      // Request code from the target user
+      targetSocket.emit(ACTIONS.SYNC_CODE, { roomId, socketId: socket.id });
+    }
   });
   socket.on("execute_cpp", ({ code }) => {
     executeCppCode(code, socket);
@@ -167,9 +190,3 @@ io.on("connection", (socket) => {
     socket.leave();
   });
 });
-
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Listening on port ${PORT}`));
-
-// Export for Vercel
-module.exports = app;
