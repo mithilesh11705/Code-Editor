@@ -17,7 +17,10 @@ app.use(
   cors({
     origin:
       process.env.NODE_ENV === "production"
-        ? ["https://your-app-name.vercel.app", "https://your-custom-domain.com"]
+        ? [
+            "https://code-collab-kx9xsnz1b-mithilesh11705s-projects.vercel.app",
+            "https://your-custom-domain.com",
+          ]
         : ["http://localhost:3000", "http://localhost:5000"],
     methods: ["GET", "POST"],
     credentials: true,
@@ -30,7 +33,10 @@ const io = new Server(server, {
   cors: {
     origin:
       process.env.NODE_ENV === "production"
-        ? ["https://your-app-name.vercel.app", "https://your-custom-domain.com"]
+        ? [
+            "https://code-collab-kx9xsnz1b-mithilesh11705s-projects.vercel.app",
+            "https://your-custom-domain.com",
+          ]
         : "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true,
