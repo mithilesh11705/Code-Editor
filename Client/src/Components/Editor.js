@@ -93,6 +93,7 @@ int main() {
     []
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     let editor = null;
     async function init() {
