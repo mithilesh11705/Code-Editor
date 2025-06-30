@@ -218,7 +218,7 @@ int main() {
         }
       };
     }
-  }, []); // Empty dependency array to run only once
+  }, [socketRef]); // Empty dependency array to run only once
 
   function leaveRoom() {
     reactNavigator("/");
