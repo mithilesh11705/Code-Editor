@@ -24,8 +24,6 @@ console.log("Random Number between 1 and 100 : " + randomNumber(1, 100));`);
   const { roomId } = useParams();
   const [clients, setClients] = useState([]);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [output, setOutput] = useState("// Output will appear here...");
-  const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
     // Prevent multiple initializations
@@ -88,13 +86,11 @@ console.log("Random Number between 1 and 100 : " + randomNumber(1, 100));`);
           });
 
           socketRef.current.on("cpp_output", ({ output, error }) => {
-            setOutput(error || output);
-            setIsRunning(false);
+            // Output handling is done in Editor component
           });
 
           socketRef.current.on("python_output", ({ output, error }) => {
-            setOutput(error || output);
-            setIsRunning(false);
+            // Output handling is done in Editor component
           });
         };
 
