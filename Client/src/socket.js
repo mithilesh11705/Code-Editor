@@ -7,37 +7,34 @@ export const initSocket = () => {
     return socketInstance;
   }
 
-  // const options = {
-  //   "force new connection": true,
-  //   reconnectionAttempts: 3,
-  //   timeout: 10000,
-  //   transports: ["websocket"],
-  //   auth: {
-  //     token: "your-token",
-  //   },
-  //   reconnection: true,
-  //   pingTimeout: 60000,
-  //   pingInterval: 25000,
-  //   upgrade: true,
-  //   path: "/socket.io",
-  // };
-  const BACKEND_URL =
-  process.env.NODE_ENV === "development"
-    ? "http://localhost:5000"
-    : "https://code-collab-1y5fvjfui-mithilesh11705s-projects.vercel.app/";
+  const options = {
+    "force new connection": true,
+    reconnectionAttempts: 3,
+    timeout: 10000,
+    transports: ["websocket"],
+    auth: {
+      token: "your-token",
+    },
+    reconnection: true,
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    upgrade: true,
+    path: "/socket.io",
+  };
 
-
-  //const serverUrl = process.env.REACT_APP_SERVER_URL || "http://localhost:5000";
+  // Use environment variable for server URL or fallback to localhost
+  const serverUrl =
+    process.env.REACT_APP_SERVER_URL ||
+    (process.env.NODE_ENV === "production"
+      ? "https://server-6qvgas4on-mithilesh11705s-projects.vercel.app/" // Replace with your actual backend URL
+      : "http://localhost:5000");
 
   // If there's an existing instance, disconnect it first
   if (socketInstance) {
     socketInstance.disconnect();
   }
 
-  socketInstance = io(BACKEND_URL, {
-  transports: ["websocket"],
-  secure: true,
-});
+  socketInstance = io(serverUrl, options);
 
   socketInstance.connected = false;
 
