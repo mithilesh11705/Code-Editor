@@ -12,11 +12,20 @@
       "dest": "/main.js"
     },
     {
+      "src": "/",
+      "dest": "/main.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "/main.js"
     }
   ],
   "env": {
     "NODE_ENV": "production"
+  },
+  "functions": {
+    "main.js": {
+      "maxDuration": 30
+    }
   }
 } 

@@ -65,13 +65,33 @@ app.get("/", (req, res) => {
   });
 });
 
-// Serve static files in production
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../Client/build")));
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../Client/build", "index.html"));
+// Favicon endpoint to prevent 404 errors
+app.get("/favicon.ico", (req, res) => {
+  res.status(204).end(); // No content
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Error:", err);
+  res.status(500).json({
+    error: "Internal server error",
+    message:
+      process.env.NODE_ENV === "development"
+        ? err.message
+        : "Something went wrong",
   });
-}
+});
+
+// 404 handler for unmatched routes
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Not found",
+    message: "This endpoint does not exist",
+  });
+});
+
+// Remove static file serving since this is backend-only
+// The frontend will be deployed separately
 
 const userSocketMap = {};
 
