@@ -209,6 +209,31 @@ io.on("connection", (socket) => {
       targetSocket.emit(ACTIONS.SYNC_CODE, { roomId, socketId: socket.id });
     }
   });
+  socket.on(ACTIONS.CHAT, ({ roomId, username, message, recipient }) => {
+    if (!recipient || recipient === "everyone") {
+      io.in(roomId).emit(ACTIONS.CHAT_MESSAGE, {
+        username,
+        message,
+        timestamp: new Date().toISOString(),
+        recipient: "everyone",
+      });
+    } else {
+      // Find the socketId of the recipient
+      const clients = getAllConnectedClients(roomId);
+      const target = clients.find((c) => c.username === recipient);
+      if (target) {
+        // Send to recipient and sender only
+        [socket.id, target.socketId].forEach((sid) => {
+          io.to(sid).emit(ACTIONS.CHAT_MESSAGE, {
+            username,
+            message,
+            timestamp: new Date().toISOString(),
+            recipient,
+          });
+        });
+      }
+    }
+  });
   socket.on("execute_cpp", ({ code }) => {
     executeCppCode(code, socket);
   });
