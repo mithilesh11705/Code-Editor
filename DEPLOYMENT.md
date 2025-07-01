@@ -1,6 +1,6 @@
 # 🚀 Deployment Guide for CodeCollab
 
-This guide will help you deploy your real-time code editor to various platforms.
+This guide will help you deploy both the frontend and backend of CodeCollab to Vercel.
 
 ## 📋 Prerequisites
 
@@ -299,3 +299,128 @@ If you encounter any issues during deployment:
 ## 🎉 Success!
 
 Once deployed, your real-time code editor will be available at your production URL. Share it with your team and start collaborating on code in real-time!
+
+## Backend Deployment (Already Done)
+
+Your backend is already deployed at: `https://server-6qvgas4on-mithilesh11705s-projects.vercel.app`
+
+## Frontend Deployment
+
+### Method 1: Using Vercel Dashboard (Recommended)
+
+1. **Go to [vercel.com](https://vercel.com)**
+2. **Create New Project**
+3. **Import your GitHub repository**
+4. **Configure the project**:
+   - **Framework Preset**: Create React App
+   - **Root Directory**: `Client`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `build`
+   - **Install Command**: `npm install`
+5. **Click Deploy**
+
+### Method 2: Using Vercel CLI
+
+1. **Navigate to the project root**:
+
+   ```bash
+   cd Real_Time-Code_Editor
+   ```
+
+2. **Install Vercel CLI** (if not already installed):
+
+   ```bash
+   npm install -g vercel
+   ```
+
+3. **Deploy**:
+
+   ```bash
+   vercel
+   ```
+
+4. **Follow the prompts**:
+   - Set up and deploy: `Y`
+   - Which scope: Select your account
+   - Link to existing project: `N`
+   - Project name: `codecollab-frontend` (or any name)
+   - Directory: `./` (current directory)
+   - Override settings: `N`
+
+## Environment Variables Setup
+
+After deploying the frontend, you need to set the backend URL:
+
+1. **Go to your frontend Vercel project dashboard**
+2. **Navigate to Settings → Environment Variables**
+3. **Add new environment variable**:
+   - **Name**: `REACT_APP_SERVER_URL`
+   - **Value**: `https://server-6qvgas4on-mithilesh11705s-projects.vercel.app`
+   - **Environment**: Production
+4. **Click Save**
+
+## Redeploy Frontend
+
+After setting the environment variable:
+
+1. **Go to your frontend Vercel project dashboard**
+2. **Click "Redeploy"** to pick up the new environment variable
+
+## Testing the Deployment
+
+1. **Open your frontend URL** (e.g., `https://codecollab-frontend.vercel.app`)
+2. **Create a room** with a username
+3. **Open another browser window/tab** and join the same room
+4. **Start typing** - you should see real-time collaboration working
+
+## Troubleshooting
+
+### WebSocket Connection Issues
+
+If you see WebSocket connection errors:
+
+1. **Check the backend URL** in environment variables
+2. **Verify the backend is running** by visiting: `https://server-6qvgas4on-mithilesh11705s-projects.vercel.app`
+3. **Check browser console** for specific error messages
+
+### Environment Variable Issues
+
+If the frontend can't connect to the backend:
+
+1. **Verify the environment variable is set correctly**
+2. **Redeploy the frontend** after setting environment variables
+3. **Check that the variable name is exactly**: `REACT_APP_SERVER_URL`
+
+### Build Issues
+
+If the build fails:
+
+1. **Check the build logs** in Vercel dashboard
+2. **Verify all dependencies** are in `Client/package.json`
+3. **Test locally** with `npm run build` in the Client directory
+
+## URLs Summary
+
+- **Backend**: `https://server-6qvgas4on-mithilesh11705s-projects.vercel.app`
+- **Frontend**: `https://your-frontend-url.vercel.app` (after deployment)
+
+## Local Development
+
+To test locally:
+
+1. **Start backend**:
+
+   ```bash
+   cd Server
+   npm install
+   npm start
+   ```
+
+2. **Start frontend**:
+   ```bash
+   cd Client
+   npm install
+   npm start
+   ```
+
+The frontend will automatically connect to `http://localhost:5000` in development mode.

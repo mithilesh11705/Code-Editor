@@ -9,21 +9,9 @@
         "installCommand": "cd Client && npm install",
         "buildCommand": "cd Client && npm run build"
       }
-    },
-    {
-      "src": "Server/main.js",
-      "use": "@vercel/node"
     }
   ],
   "routes": [
-    {
-      "src": "/socket.io/(.*)",
-      "dest": "/Server/main.js"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/Server/main.js"
-    },
     {
       "src": "/(.*)",
       "dest": "/Client/$1"
