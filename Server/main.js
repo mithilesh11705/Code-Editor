@@ -6,6 +6,8 @@ const { Server } = require("socket.io");
 const { exec } = require("child_process");
 const fs = require("fs");
 const ACTIONS = require("../Client/src/Actions.js");
+const mongoose = require("mongoose");
+require("dotenv").config();
 
 // Define PORT at the top
 const PORT = process.env.PORT || 5000;
@@ -183,24 +185,49 @@ function executePythonCode(code, socket) {
 
 io.on("connection", (socket) => {
   console.log("socket connected", socket.id);
-  socket.on(ACTIONS.JOIN, ({ roomId, username }) => {
-    userSocketMap[socket.id] = username;
+
+  socket.on(ACTIONS.JOIN, async ({ roomId, username }) => {
+    // Add user to room in DB
+    let room = await Room.findOne({ roomId });
+    if (!room) {
+      room = await Room.create({
+        roomId,
+        participants: [{ username, socketId: socket.id }],
+        chatHistory: [],
+      });
+    } else {
+      // Avoid duplicate participants
+      if (!room.participants.some((p) => p.username === username)) {
+        room.participants.push({ username, socketId: socket.id });
+      } else {
+        // Update socketId if user rejoins
+        room.participants = room.participants.map((p) =>
+          p.username === username ? { ...p.toObject(), socketId: socket.id } : p
+        );
+      }
+      room.updatedAt = new Date();
+      await room.save();
+    }
     socket.join(roomId);
-    const clients = getAllConnectedClients(roomId);
-    socket.to(roomId).emit(ACTIONS.JOINED, {
-      clients,
+    // Send current state to the joining user
+    socket.emit(ACTIONS.JOINED, {
+      clients: room.participants,
       username,
       socketId: socket.id,
+      chatHistory: room.chatHistory,
     });
-    socket.emit(ACTIONS.JOINED, {
-      clients,
+    // Notify others
+    socket.to(roomId).emit(ACTIONS.JOINED, {
+      clients: room.participants,
       username,
       socketId: socket.id,
     });
   });
+
   socket.on(ACTIONS.CODE_CHANGE, ({ roomId, code }) => {
     socket.in(roomId).emit(ACTIONS.CODE_CHANGE, { code });
   });
+
   socket.on(ACTIONS.SYNC_CODE, ({ roomId, socketId }) => {
     // Get the code from the specified user and send it to the requesting user
     const targetSocket = io.sockets.sockets.get(socketId);
@@ -209,46 +236,97 @@ io.on("connection", (socket) => {
       targetSocket.emit(ACTIONS.SYNC_CODE, { roomId, socketId: socket.id });
     }
   });
-  socket.on(ACTIONS.CHAT, ({ roomId, username, message, recipient }) => {
+
+  socket.on(ACTIONS.CHAT, async ({ roomId, username, message, recipient }) => {
+    const room = await Room.findOne({ roomId });
+    if (!room) return;
+    const chatMsg = {
+      username,
+      message,
+      timestamp: new Date(),
+      recipient: recipient || "everyone",
+    };
+    room.chatHistory.push(chatMsg);
+    room.updatedAt = new Date();
+    await room.save();
     if (!recipient || recipient === "everyone") {
-      io.in(roomId).emit(ACTIONS.CHAT_MESSAGE, {
-        username,
-        message,
-        timestamp: new Date().toISOString(),
-        recipient: "everyone",
-      });
+      io.in(roomId).emit(ACTIONS.CHAT_MESSAGE, chatMsg);
     } else {
-      // Find the socketId of the recipient
-      const clients = getAllConnectedClients(roomId);
-      const target = clients.find((c) => c.username === recipient);
+      const target = room.participants.find((p) => p.username === recipient);
       if (target) {
-        // Send to recipient and sender only
         [socket.id, target.socketId].forEach((sid) => {
-          io.to(sid).emit(ACTIONS.CHAT_MESSAGE, {
-            username,
-            message,
-            timestamp: new Date().toISOString(),
-            recipient,
-          });
+          io.to(sid).emit(ACTIONS.CHAT_MESSAGE, chatMsg);
         });
       }
     }
   });
+
   socket.on("execute_cpp", ({ code }) => {
     executeCppCode(code, socket);
   });
+
   socket.on("execute_python", ({ code }) => {
     executePythonCode(code, socket);
   });
-  socket.on("disconnecting", () => {
+
+  socket.on("disconnecting", async () => {
     const rooms = [...socket.rooms];
-    rooms.forEach((roomId) => {
-      socket.in(roomId).emit(ACTIONS.DISCONNECTED, {
-        socketId: socket.id,
-        username: userSocketMap[socket.id],
-      });
-    });
+    for (const roomId of rooms) {
+      const room = await Room.findOne({ roomId });
+      if (room) {
+        // Find the leaving user BEFORE removing them
+        const leavingUser = room.participants.find(
+          (p) => p.socketId === socket.id
+        );
+        // Remove participant
+        room.participants = room.participants.filter(
+          (p) => p.socketId !== socket.id
+        );
+        room.updatedAt = new Date();
+        await room.save();
+        // Notify others
+        socket.in(roomId).emit(ACTIONS.DISCONNECTED, {
+          socketId: socket.id,
+          username: leavingUser ? leavingUser.username : undefined,
+        });
+        // Delete room if empty
+        if (room.participants.length === 0) {
+          await Room.deleteOne({ roomId });
+        }
+      }
+    }
     delete userSocketMap[socket.id];
     socket.leave();
   });
 });
+
+// MongoDB connection
+mongoose.connect(
+  process.env.MONGODB_URI || "mongodb://localhost:27017/codecollab",
+  {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  }
+);
+
+const roomSchema = new mongoose.Schema({
+  roomId: { type: String, required: true, unique: true },
+  participants: [
+    {
+      username: String,
+      socketId: String,
+    },
+  ],
+  chatHistory: [
+    {
+      username: String,
+      message: String,
+      timestamp: Date,
+      recipient: String,
+    },
+  ],
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+const Room = mongoose.model("Room", roomSchema);
