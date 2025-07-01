@@ -8,7 +8,12 @@ import "codemirror/addon/edit/closetag";
 import "codemirror/addon/edit/closebrackets";
 import { initSocket } from "../socket";
 import Editor from "../Components/Editor";
-import { useLocation, Navigate, useParams } from "react-router-dom";
+import {
+  useLocation,
+  Navigate,
+  useParams,
+  useNavigate,
+} from "react-router-dom";
 import Chat from "../Components/Chat";
 
 const EditorPage = () => {
@@ -28,6 +33,7 @@ console.log("Random Number between 1 and 100 : " + randomNumber(1, 100));`);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
   const [recipient, setRecipient] = useState("everyone");
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Prevent multiple initializations
@@ -42,10 +48,12 @@ console.log("Random Number between 1 and 100 : " + randomNumber(1, 100));`);
           // Room events
           socketRef.current.on(
             ACTIONS.JOINED,
-            ({ clients, username, socketId }) => {
+            ({ clients, username, socketId, chatHistory }) => {
               console.log("Joined room with clients:", clients);
               setClients(clients);
-
+              if (Array.isArray(chatHistory)) {
+                setChatMessages(chatHistory);
+              }
               // If this is not the first user, request code sync from the first user
               if (clients.length > 1) {
                 const firstClient = clients.find(
@@ -169,13 +177,40 @@ console.log("Random Number between 1 and 100 : " + randomNumber(1, 100));`);
     setChatInput("");
   };
 
+  const handleExitRoom = () => {
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+    navigate("/");
+  };
+
+  const handleCopyInviteLink = () => {
+    const inviteLink = `${window.location.origin}/editor/${roomId}`;
+    navigator.clipboard.writeText(inviteLink);
+    toast.success("Invite link copied to clipboard!");
+  };
+
   if (!location.state) {
     return <Navigate to="/" />;
   }
 
   return (
     <div className="flex h-screen w-full bg-background">
-      <div className="flex-1">
+      <div className="flex-1 relative">
+        <button
+          onClick={handleExitRoom}
+          className="absolute top-6 right-8 z-20 btn-secondary px-4 py-2 text-sm font-semibold hover:bg-red-500 hover:text-white transition shadow-lg"
+          title="Exit Room"
+        >
+          Exit Room
+        </button>
+        <button
+          onClick={handleCopyInviteLink}
+          className="absolute top-6 right-40 z-20 btn-primary px-4 py-2 text-sm font-semibold shadow-lg"
+          title="Copy Invite Link"
+        >
+          Copy Invite Link
+        </button>
         <Editor
           clients={clients}
           socketRef={socketRef}

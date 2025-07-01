@@ -17,11 +17,11 @@ const Chat = ({
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-full bg-surface border-l border-border shadow-lg w-full max-w-sm min-w-[320px]">
-      <div className="flex items-center px-4 py-3 border-b border-border bg-surface-light">
+    <div className="flex flex-col h-full bg-surface/80 border-l border-border shadow-2xl w-full max-w-sm min-w-[320px] glass-effect rounded-l-3xl m-2 mb-4 overflow-hidden backdrop-blur-lg">
+      <div className="flex items-center px-6 py-4 border-b border-border bg-surface-light/80 rounded-tl-3xl">
         <span className="font-semibold text-lg text-primary">Room Chat</span>
       </div>
-      <div className="flex flex-col gap-2 px-4 pt-2 pb-0 bg-surface-light border-b border-border">
+      <div className="flex flex-col gap-2 px-6 pt-3 pb-0 bg-surface-light/80 border-b border-border">
         <label
           className="text-xs text-text-muted font-medium mb-1"
           htmlFor="recipient-select"
@@ -30,21 +30,25 @@ const Chat = ({
         </label>
         <select
           id="recipient-select"
-          className="input-field w-full text-sm bg-surface border border-border rounded focus:ring-2 focus:ring-primary"
+          className="input-field w-full text-sm bg-gray-900 text-white border border-primary/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary shadow appearance-none"
           value={recipient}
           onChange={(e) => setRecipient(e.target.value)}
         >
           <option value="everyone">Everyone</option>
           {clients
-            .filter((c) => c.username !== username)
+            .filter((c) => c.username && c.username !== username)
             .map((c) => (
-              <option key={c.socketId} value={c.username}>
+              <option
+                key={c.socketId}
+                value={c.username}
+                className="bg-gray-900 text-white"
+              >
                 {c.username}
               </option>
             ))}
         </select>
       </div>
-      <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3 bg-surface fade-in chat-scrollbar">
+      <div className="flex-1 overflow-y-auto px-6 py-3 space-y-3 bg-surface/70 fade-in chat-scrollbar">
         {messages.length === 0 && (
           <div className="text-text-muted text-center mt-8">
             No messages yet.
@@ -85,7 +89,7 @@ const Chat = ({
               )}
             </div>
             <div
-              className={`rounded-lg px-3 py-2 max-w-[80%] text-sm shadow-md chat-bubble ${
+              className={`rounded-2xl px-4 py-2 max-w-[80%] text-sm shadow-lg chat-bubble ${
                 msg.username === username
                   ? "chat-bubble-user"
                   : "chat-bubble-other"
@@ -99,7 +103,7 @@ const Chat = ({
       </div>
       <form
         onSubmit={onSend}
-        className="flex items-center gap-2 p-3 border-t border-border bg-surface-light"
+        className="flex items-center gap-2 p-4 border-t border-border bg-surface-light/80 rounded-bl-3xl"
         autoComplete="off"
       >
         <input
@@ -109,12 +113,12 @@ const Chat = ({
           placeholder={`Message to ${
             recipient === "everyone" ? "Everyone" : recipient
           }`}
-          className="flex-1 input-field focus:ring-2 focus:ring-primary focus:border-primary"
+          className="flex-1 input-field focus:ring-2 focus:ring-primary focus:border-primary bg-gray-900 text-white rounded-xl px-4 py-2"
           aria-label="Type a message"
         />
         <button
           type="submit"
-          className="btn-primary px-4 py-2 text-sm"
+          className="btn-primary px-5 py-2 text-sm rounded-xl shadow-lg"
           disabled={!input.trim()}
         >
           Send
