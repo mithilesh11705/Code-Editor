@@ -11,14 +11,9 @@ import "codemirror/addon/edit/closetag";
 import "codemirror/theme/3024-night.css";
 import "codemirror/addon/edit/closebrackets";
 import ACTIONS from "../Actions";
-import Avatar from "react-avatar";
-import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import LoadingSpinner from "./LoadingSpinner";
-import StatusIndicator from "./StatusIndicator";
 
-const Editor = ({ clients, socketRef, roomId, onCodeChange }) => {
-  const reactNavigator = useNavigate();
+const Editor = ({ clients, socketRef, roomId, onCodeChange, username }) => {
   const editorRef = useRef(null);
   const [language, setLanguage] = useState("javascript");
   const [isRunning, setIsRunning] = useState(false);
@@ -220,10 +215,6 @@ int main() {
     }
   }, [socketRef]); // Empty dependency array to run only once
 
-  function leaveRoom() {
-    reactNavigator("/");
-  }
-
   const handleRunCode = () => {
     const code = editorRef.current.getValue();
     setIsRunning(true);
@@ -290,84 +281,90 @@ int main() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="h-full w-full flex flex-col bg-surface border-r border-border p-4 relative overflow-hidden">
+      {/* Subtle background pattern */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-30 z-0"
+        style={{
+          background:
+            "radial-gradient(circle at 20% 20%, #6366f1 0%, transparent 60%), radial-gradient(circle at 80% 80%, #38bdf8 0%, transparent 60%)",
+        }}
+      />
       {/* Header */}
-      <div className="glass-effect border-b border-gray-700 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <motion.div
-                className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center"
-                whileHover={{ rotate: 360 }}
-                transition={{ duration: 0.6 }}
-              >
-                <span className="text-white text-sm font-bold">CC</span>
-              </motion.div>
-              <h1 className="text-xl font-bold text-white">CodeCollab</h1>
-            </div>
-            <div className="flex items-center space-x-2 text-sm text-gray-300">
-              <span>Room:</span>
-              <span className="bg-gray-700 px-2 py-1 rounded text-white font-mono">
-                {roomId}
+      <div className="glass-effect border-b border-gray-700 px-6 py-4 flex items-center justify-between z-10 relative">
+        <div className="flex items-center space-x-2">
+          <span className="text-xl font-bold text-primary tracking-wide">
+            CodeCollab Editor
+          </span>
+          <span className="ml-4 text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+            Room: {roomId}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Add user avatars or status here if needed */}
+        </div>
+      </div>
+      {/* Main Content */}
+      <div className="flex-1 grid grid-cols-2 gap-0 bg-gradient-to-br from-surface via-surface-light to-background relative z-10">
+        {/* Editor Panel */}
+        <div className="flex flex-col bg-gray-900 rounded-l-2xl shadow-2xl m-4 overflow-hidden relative glass-effect border border-primary/30">
+          {/* Editor Panel Header with Language Selector and Run/Clear Buttons */}
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+            <div className="flex items-center space-x-3">
+              <span className="text-lg">{languageIcons[language]}</span>
+              <span className="text-white font-medium uppercase tracking-wide bg-primary/20 px-2 py-1 rounded-lg text-xs shadow">
+                {language}
               </span>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            {/* Status Indicators */}
-            <StatusIndicator status="connected" type="connection" />
-            <StatusIndicator
-              status={isRunning ? "running" : "idle"}
-              type="execution"
-            />
-
-            {/* Language Selector */}
-            <div className="flex items-center space-x-2">
-              <span className="text-gray-300 text-sm">Language:</span>
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-600 focus:border-indigo-500 focus:outline-none text-sm"
+                className="ml-2 bg-gray-900 text-white px-2 py-1 rounded border border-border focus:ring-2 focus:ring-primary text-xs shadow appearance-none"
+                style={{ minWidth: 120 }}
               >
-                <option value="javascript">JavaScript ⚡</option>
-                <option value="python">Python 🐍</option>
-                <option value="html">HTML 🌐</option>
-                <option value="css">CSS 🎨</option>
-                <option value="cpp">C++ ⚙️</option>
+                <option className="bg-gray-900 text-white" value="javascript">
+                  JavaScript ⚡
+                </option>
+                <option className="bg-gray-900 text-white" value="python">
+                  Python 🐍
+                </option>
+                <option className="bg-gray-900 text-white" value="html">
+                  HTML 🌐
+                </option>
+                <option className="bg-gray-900 text-white" value="css">
+                  CSS 🎨
+                </option>
+                <option className="bg-gray-900 text-white" value="cpp">
+                  C++ ⚙️
+                </option>
               </select>
             </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center space-x-2">
-              <motion.button
+            <div className="flex items-center gap-2">
+              <button
                 onClick={handleRunCode}
                 disabled={isRunning}
-                className="btn-primary flex items-center space-x-2 px-4 py-2 text-sm disabled:opacity-50"
+                className="btn-primary flex items-center gap-1 px-4 py-1 text-xs disabled:opacity-50"
                 title="Run Code"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
               >
                 {isRunning ? (
-                  <LoadingSpinner size="sm" text="" />
+                  <span className="animate-pulse">Running...</span>
                 ) : (
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <polygon points="6 3 20 12 6 21 6 3"></polygon>
-                  </svg>
+                  <>
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <polygon points="6 3 20 12 6 21 6 3"></polygon>
+                    </svg>
+                    Run
+                  </>
                 )}
-                <span>Run</span>
-              </motion.button>
-
-              <motion.button
+              </button>
+              <button
                 onClick={clearOutput}
-                className="btn-secondary px-3 py-2 text-sm"
+                className="btn-secondary px-3 py-1 text-xs"
                 title="Clear Output"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
               >
                 <svg
                   className="w-4 h-4"
@@ -382,67 +379,8 @@ int main() {
                     d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                   />
                 </svg>
-              </motion.button>
-
-              <motion.button
-                onClick={leaveRoom}
-                className="btn-secondary px-3 py-2 text-sm"
-                title="Leave Room"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                  />
-                </svg>
-              </motion.button>
-            </div>
-          </div>
-        </div>
-
-        {/* Connected Users */}
-        <div className="flex items-center space-x-4 mt-3">
-          <span className="text-gray-400 text-sm">Connected:</span>
-          <div className="flex items-center space-x-2">
-            {clients.map((client) => (
-              <motion.div
-                key={client.socketId}
-                className="flex items-center space-x-2 bg-gray-800 px-3 py-1 rounded-full"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Avatar name={client.username} size={20} round="50%" />
-                <span className="text-white text-sm">{client.username}</span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 grid grid-cols-2 gap-0">
-        {/* Editor Panel */}
-        <div className="flex flex-col bg-gray-900">
-          <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
-            <div className="flex items-center space-x-2">
-              <span className="text-lg">{languageIcons[language]}</span>
-              <span className="text-white font-medium">
-                {language.toUpperCase()}
-              </span>
-            </div>
-            <div className="flex items-center space-x-2 text-xs text-gray-400">
-              <span>Real-time collaboration</span>
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                Clear
+              </button>
             </div>
           </div>
           <div className="flex-1 p-4">
@@ -452,9 +390,8 @@ int main() {
             ></textarea>
           </div>
         </div>
-
         {/* Output Panel */}
-        <div className="flex flex-col bg-gray-900">
+        <div className="flex flex-col bg-gradient-to-br from-gray-900 via-surface to-surface-light rounded-r-2xl shadow-2xl m-4 overflow-hidden border border-primary/20">
           <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
             <div className="flex items-center space-x-2">
               <svg
@@ -493,6 +430,14 @@ int main() {
             </div>
           </div>
         </div>
+      </div>
+      {/* Footer */}
+      <div className="glass-effect border-t border-gray-700 px-6 py-2 flex items-center justify-between text-xs text-text-muted z-10 relative">
+        <span>
+          Connected as{" "}
+          <span className="text-primary font-semibold">{username}</span>
+        </span>
+        <span>Powered by CodeCollab</span>
       </div>
     </div>
   );

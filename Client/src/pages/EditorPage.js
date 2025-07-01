@@ -9,6 +9,7 @@ import "codemirror/addon/edit/closebrackets";
 import { initSocket } from "../socket";
 import Editor from "../Components/Editor";
 import { useLocation, Navigate, useParams } from "react-router-dom";
+import Chat from "../Components/Chat";
 
 const EditorPage = () => {
   const socketRef = useRef(null);
@@ -24,6 +25,9 @@ console.log("Random Number between 1 and 100 : " + randomNumber(1, 100));`);
   const { roomId } = useParams();
   const [clients, setClients] = useState([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [recipient, setRecipient] = useState("everyone");
 
   useEffect(() => {
     // Prevent multiple initializations
@@ -92,6 +96,17 @@ console.log("Random Number between 1 and 100 : " + randomNumber(1, 100));`);
           socketRef.current.on("python_output", ({ output, error }) => {
             // Output handling is done in Editor component
           });
+
+          // Chat message event
+          socketRef.current.on(
+            ACTIONS.CHAT_MESSAGE,
+            ({ username, message, timestamp }) => {
+              setChatMessages((prev) => [
+                ...prev,
+                { username, message, timestamp },
+              ]);
+            }
+          );
         };
 
         // Wait for connection
@@ -142,21 +157,46 @@ console.log("Random Number between 1 and 100 : " + randomNumber(1, 100));`);
     init();
   }, [roomId, location.state?.username, isInitialized]);
 
+  const sendChatMessage = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    socketRef.current.emit(ACTIONS.CHAT, {
+      roomId,
+      username: location.state?.username,
+      message: chatInput,
+      recipient,
+    });
+    setChatInput("");
+  };
+
   if (!location.state) {
     return <Navigate to="/" />;
   }
 
   return (
-    <>
-      <Editor
+    <div className="flex h-screen w-full bg-background">
+      <div className="flex-1">
+        <Editor
+          clients={clients}
+          socketRef={socketRef}
+          roomId={roomId}
+          onCodeChange={(code) => {
+            codeRef.current = code;
+          }}
+          username={location.state?.username}
+        />
+      </div>
+      <Chat
+        messages={chatMessages}
+        input={chatInput}
+        setInput={setChatInput}
+        onSend={sendChatMessage}
+        username={location.state?.username}
         clients={clients}
-        socketRef={socketRef}
-        roomId={roomId}
-        onCodeChange={(code) => {
-          codeRef.current = code;
-        }}
+        recipient={recipient}
+        setRecipient={setRecipient}
       />
-    </>
+    </div>
   );
 };
 

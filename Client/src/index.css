@@ -236,3 +236,44 @@ body {
 #btn:hover {
   transform: scale(1.05);
 }
+
+/* Chat Scrollbar */
+.chat-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+.chat-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--surface-light);
+  border-radius: 8px;
+}
+
+/* Chat Bubble Animation */
+@keyframes chatBubbleIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.chat-bubble {
+  animation: chatBubbleIn 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* User Bubble Color for Accessibility */
+.chat-bubble-user {
+  background: linear-gradient(
+    135deg,
+    var(--primary) 60%,
+    var(--primary-dark) 100%
+  );
+  color: #fff;
+}
+
+/* Other Bubble Color */
+.chat-bubble-other {
+  background: var(--surface-light);
+  color: var(--text-primary);
+}
