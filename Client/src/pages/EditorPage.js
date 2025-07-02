@@ -166,7 +166,7 @@ console.log("Random Number between 1 and 100 : " + randomNumber(1, 100));`);
   }, [roomId, location.state?.username, isInitialized]);
 
   const sendChatMessage = (e) => {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
     if (!chatInput.trim()) return;
     socketRef.current.emit(ACTIONS.CHAT, {
       roomId,
