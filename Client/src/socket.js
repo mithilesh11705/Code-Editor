@@ -23,11 +23,11 @@ export const initSocket = () => {
   };
 
   // Use environment variable for server URL or fallback to localhost
-  const serverUrl =
-    process.env.REACT_APP_SERVER_URL ||
-    (process.env.NODE_ENV === "production"
-      ? "https://real-time-code-editor-wy03.onrender.com" // Your actual backend URL
-      : "http://localhost:5000");
+  const serverUrl = "https://real-time-code-editor-wy03.onrender.com";
+    // process.env.REACT_APP_SERVER_URL ||
+    // (process.env.NODE_ENV === "production"
+    //   ? "https://real-time-code-editor-wy03.onrender.com" // Your actual backend URL
+    //   : "http://localhost:5000");
 
   // If there's an existing instance, disconnect it first
   if (socketInstance) {
