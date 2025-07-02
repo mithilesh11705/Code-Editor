@@ -26,7 +26,7 @@ export const initSocket = () => {
   const serverUrl =
     process.env.REACT_APP_SERVER_URL ||
     (process.env.NODE_ENV === "production"
-      ? "https://server-6qvgas4on-mithilesh11705s-projects.vercel.app" // Your actual backend URL
+      ? "https://real-time-code-editor-wy03.onrender.com" // Your actual backend URL
       : "http://localhost:5000");
 
   // If there's an existing instance, disconnect it first
