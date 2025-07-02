@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import ACTIONS from "../Actions";
 import "codemirror/lib/codemirror.css";
@@ -190,6 +190,10 @@ console.log("Random Number between 1 and 100 : " + randomNumber(1, 100));`);
     toast.success("Invite link copied to clipboard!");
   };
 
+  const handleCodeChange = useCallback((code) => {
+    codeRef.current = code;
+  }, []);
+
   if (!location.state) {
     return <Navigate to="/" />;
   }
@@ -215,9 +219,7 @@ console.log("Random Number between 1 and 100 : " + randomNumber(1, 100));`);
           clients={clients}
           socketRef={socketRef}
           roomId={roomId}
-          onCodeChange={(code) => {
-            codeRef.current = code;
-          }}
+          onCodeChange={handleCodeChange}
           username={location.state?.username}
         />
       </div>
