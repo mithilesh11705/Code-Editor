@@ -8,27 +8,31 @@ const fs = require("fs");
 const ACTIONS = require("../Client/src/Actions.js");
 const mongoose = require("mongoose");
 require("dotenv").config();
+const axios = require("axios");
 
 // Define PORT at the top
 const PORT = process.env.PORT || 5000;
 
 const app = express();
 
-// Enhanced CORS configuration for production
-app.use(
-  cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? [
-            "https://code-collab-kx9xsnz1b-mithilesh11705s-projects.vercel.app",
-            "https://your-custom-domain.com",
-          ]
-        : ["http://localhost:3000", "http://localhost:5000"],
-    methods: ["GET", "POST"],
-    credentials: true,
-    transports: ["websocket", "polling"],
-  })
-);
+const allowedOrigins = [
+  "http://localhost:3000",
+  process.env.FRONTEND_ORIGIN || "https://your-frontend-url.vercel.app",
+];
+const corsOptions = {
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST"],
+  credentials: true,
+};
+app.use(require("cors")(corsOptions));
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -330,3 +334,52 @@ const roomSchema = new mongoose.Schema({
 });
 
 const Room = mongoose.model("Room", roomSchema);
+
+// AI Code Completion & Debugging Endpoint
+app.post("/api/ai/complete", async (req, res) => {
+  try {
+    // Optional: restrict to frontend origin
+    const allowedOrigin =
+      process.env.FRONTEND_ORIGIN || "http://localhost:3000";
+    if (req.headers.origin && req.headers.origin !== allowedOrigin) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    const { prompt, type } = req.body;
+    if (!prompt) return res.status(400).json({ error: "Prompt is required" });
+    // Choose model based on type (completion or debug)
+    const model =
+      type === "debug" ? "openai/gpt-3.5-turbo" : "openai/gpt-3.5-turbo";
+    const response = await axios.post(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        model,
+        messages: [
+          {
+            role: "system",
+            content:
+              type === "debug"
+                ? "You are a helpful code debugger. Explain and fix bugs in the following code."
+                : "You are a helpful code completion assistant. Complete the following code.",
+          },
+          { role: "user", content: prompt },
+        ],
+        max_tokens: 512,
+        temperature: 0.2,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    const aiMessage = response.data.choices?.[0]?.message?.content || "";
+    res.json({ result: aiMessage });
+  } catch (err) {
+    console.error("AI API error:", err?.response?.data || err.message);
+    res.status(500).json({
+      error: "AI service error",
+      details: err?.response?.data || err.message,
+    });
+  }
+});
